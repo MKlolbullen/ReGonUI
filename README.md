@@ -63,6 +63,8 @@ Make sure all the reconnaissance tools (`assetfinder`, `subfinder`, `masscan`, `
    Open your browser and navigate to [http://localhost:8080](http://localhost:8080). You should see the **"Start New Project"** page.
 
 ## 7. Map out networks and visualize them
- Run Nmap Scan:
-- 7.1 Enter the target IP range and the interface IP, then click "Run Nmap."The network map should render with nodes representing the discovered hosts.
-- 7.2 Interact with the Network Map:Click on a node to view the open ports and services running on that host in a pop-
+- 7.1  Run Nmap Scan:
+Enter the target IP range and the interface IP, then click "Run Nmap."
+The network map should render with nodes representing the discovered hosts.
+- 7.2 Interact with the Network Map:
+Click on a node to view the open ports and services running on that host in a pop-up window.
