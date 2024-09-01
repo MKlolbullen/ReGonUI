@@ -6,7 +6,15 @@ A multi purpose Golang tool that is infused into a web-based GUI.
 ```bash
 mkdir recon-platform
 cd recon-platform
+# Initialize a new Go module.
+go mod init recon-platform
+
+# Get some dependencies:
+go get -u github.com/gin-gonic/gin
+go get -u gorm.io/gorm
+go get -u gorm.io/driver/sqlite # SQLite as an example DB
 ```
+
 ## 2. Make sure the project follows this structure:
    
 recon-platform/
@@ -22,11 +30,7 @@ recon-platform/
 
 ## 3. install dependencies and the tools you wish to use.
 
-```bash
-go get -u github.com/gin-gonic/gin
-go get -u gorm.io/gorm
-go get -u gorm.io/driver/sqlite # SQLite as an example DB
-```
+
 ## 4. Ensure Required Tools Are Installed:
 If you have Go installed and configured (i.e. with $GOPATH/bin in your $PATH):
 ```bash
