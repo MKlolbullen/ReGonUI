@@ -1,4 +1,4 @@
-# ReGonUI
+# ReGonUI (early work in progress)
 A multi purpose Golang tool that is infused into a web-based GUI with an Nmap visualizer built-in the web framework.
 
 ## 1. Create a directory for the tool.
