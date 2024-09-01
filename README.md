@@ -36,8 +36,14 @@ go install -v github.com/projectdiscovery/dnsx@latest
 go install -v github.com/projectdiscovery/subfinder@latest
 go install -v github.com/projectdiscovery/assetfinder@latest
 ```
-
-   Make sure all the reconnaissance tools (`assetfinder`, `subfinder`, `masscan`, `dnsx`, `httpx`, etc.) are installed and accessible in your system's PATH.
+Masscan comes with most pentesting distros but can also be installed like this: 
+```bash
+sudo apt-get --assume-yes install git make gcc
+git clone https://github.com/robertdavidgraham/masscan
+cd masscan
+make
+```
+Make sure all the reconnaissance tools (`assetfinder`, `subfinder`, `masscan`, `dnsx`, `httpx`, etc.) are installed and accessible in your system's PATH.
 
 
 ## 5. Run the Application:
