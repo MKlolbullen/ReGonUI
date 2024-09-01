@@ -28,7 +28,9 @@ go get -u gorm.io/gorm
 go get -u gorm.io/driver/sqlite # SQLite as an example DB
 ```
 ## 4. Ensure Required Tools Are Installed:
+If you have Go installed and configured (i.e. with $GOPATH/bin in your $PATH):
 ```bash
+go get -u github.com/tomnomnom/assetfinder
 go install -v github.com/projectdiscovery/httpx@latest
 go install -v github.com/projectdiscovery/dnsx@latest
 go install -v github.com/projectdiscovery/subfinder@latest
