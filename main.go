@@ -2,27 +2,48 @@ package main
 
 import (
     "bytes"
+    "encoding/xml"
     "fmt"
-    "io/ioutil"
-    //"net"
+    "net"
     "net/http"
-    "os"
     "os/exec"
-    "path/filepath"
-    "strings"
-    "sync"
 
     "github.com/gin-gonic/gin"
 )
 
-type ToolRequest struct {
-    ProjectName string `json:"projectName"`
-    Tool        string `json:"tool"`
-    InputType   string `json:"inputType"`
-    Input       string `json:"input"`
+type NmapRun struct {
+    Hosts []Host `xml:"host"`
 }
 
-var projectMutex sync.Mutex
+type Host struct {
+    Addresses []Address `xml:"address"`
+    Ports     Ports     `xml:"ports"`
+}
+
+type Address struct {
+    Addr string `xml:"addr,attr"`
+    Type string `xml:"addrtype,attr"`
+}
+
+type Ports struct {
+    Ports []Port `xml:"port"`
+}
+
+type Port struct {
+    PortID  string  `xml:"portid,attr"`
+    State   State   `xml:"state"`
+    Service Service `xml:"service"`
+}
+
+type State struct {
+    State string `xml:"state,attr"`
+}
+
+type Service struct {
+    Name    string `xml:"name,attr"`
+    Product string `xml:"product,attr"`
+    Version string `xml:"version,attr"`
+}
 
 func main() {
     router := gin.Default()
@@ -37,16 +58,8 @@ func main() {
     router.GET("/", func(c *gin.Context) {
         projectName := c.Query("project")
         if projectName == "" {
-            // Serve project creation page
             c.HTML(http.StatusOK, "project.html", nil)
         } else {
-            projectDir := filepath.Join("projects", projectName)
-            if _, err := os.Stat(projectDir); os.IsNotExist(err) {
-                c.HTML(http.StatusOK, "project.html", gin.H{
-                    "error": "Project does not exist. Please create a new project.",
-                })
-                return
-            }
             c.HTML(http.StatusOK, "index.html", gin.H{
                 "projectName": projectName,
             })
@@ -58,8 +71,39 @@ func main() {
     router.GET("/output", getOutputHandler)
     router.GET("/tool-help", toolHelpHandler)
 
+    // Network map route
+    router.POST("/run-nmap", runNmapHandler)
+
     // Start server
     router.Run(":8080")
+}
+
+func runNmapHandler(c *gin.Context) {
+    target := c.PostForm("target")
+    ifaceIP := c.PostForm("ifaceIP")
+
+    // Run nmap scan
+    cmd := exec.Command("nmap", "-sV", "-oX", "-", target)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    err := cmd.Run()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run nmap"})
+        return
+    }
+
+    var nmapRun NmapRun
+    err = xml.Unmarshal(out.Bytes(), &nmapRun)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse nmap output"})
+        return
+    }
+
+    // Return nmap results as JSON
+    c.JSON(http.StatusOK, gin.H{
+        "ifaceIP": ifaceIP,
+        "hosts":   nmapRun.Hosts,
+    })
 }
 
 func startProjectHandler(c *gin.Context) {
