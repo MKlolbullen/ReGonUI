@@ -6,6 +6,8 @@
     <title>Recon Platform - Project</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/script.js" defer></script>
+    <script src="/static/networkmap.js" defer></script> <!-- New script for network map -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script> <!-- Cytoscape.js for graph visualization -->
 </head>
 <body>
     <div class="container">
@@ -18,40 +20,67 @@
         </div>
 
         <div class="main-content">
-            <form id="tool-form" onsubmit="event.preventDefault(); runTool();">
-                <div class="form-group">
-                    <label for="inputType">Input Type:</label>
-                    <select name="inputType" id="inputType">
-                        <option value="domain">Domain</option>
-                        <option value="ip">IP Address</option>
-                        <option value="cidr">IP Range/CIDR</option>
-                    </select>
+            <div class="tab">
+                <button class="tablinks" onclick="openTab(event, 'Tools')">Tools</button>
+                <button class="tablinks" onclick="openTab(event, 'NetworkMap')">Network Map</button>
+            </div>
+
+            <!-- Tools tab content -->
+            <div id="Tools" class="tabcontent">
+                <form id="tool-form" onsubmit="event.preventDefault(); runTool();">
+                    <div class="form-group">
+                        <label for="inputType">Input Type:</label>
+                        <select name="inputType" id="inputType">
+                            <option value="domain">Domain</option>
+                            <option value="ip">IP Address</option>
+                            <option value="cidr">IP Range/CIDR</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tool">Select Tool:</label>
+                        <select name="tool" id="tool">
+                            <option value="assetfinder">Assetfinder</option>
+                            <option value="subfinder">Subfinder</option>
+                            <option value="masscan">Masscan</option>
+                            <option value="dnsx">DNSx</option>
+                            <option value="httpx">HTTPx</option>
+                        </select>
+                        <button type="button" class="help-button" onclick="showHelp()">?</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input">Input (Domain, IP, CIDR):</label>
+                        <input type="text" id="input" name="input" placeholder="example.com or 192.168.1.0/24" required>
+                    </div>
+
+                    <button type="submit">Run</button>
+                </form>
+
+                <h2>Output:</h2>
+                <div id="output" class="output-box">
+                    <!-- Tool output will be displayed here -->
                 </div>
+            </div>
 
-                <div class="form-group">
-                    <label for="tool">Select Tool:</label>
-                    <select name="tool" id="tool">
-                        <option value="assetfinder">Assetfinder</option>
-                        <option value="subfinder">Subfinder</option>
-                        <option value="masscan">Masscan</option>
-                        <option value="dnsx">DNSx</option>
-                        <option value="httpx">HTTPx</option>
-                        <!-- Add more options here -->
-                    </select>
-                    <button type="button" class="help-button" onclick="showHelp()">?</button>
+            <!-- Network Map tab content -->
+            <div id="NetworkMap" class="tabcontent">
+                <h2>Network Map</h2>
+                <form id="nmap-form" onsubmit="event.preventDefault(); runNmap();">
+                    <div class="form-group">
+                        <label for="target">Target IP/Range:</label>
+                        <input type="text" id="target" name="target" placeholder="192.168.1.0/24" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ifaceIP">Interface IP:</label>
+                        <input type="text" id="ifaceIP" name="ifaceIP" placeholder="192.168.1.100" required>
+                    </div>
+                    <button type="submit">Run Nmap</button>
+                </form>
+
+                <div id="network-map-container">
+                    <div id="cy"></div>
                 </div>
-
-                <div class="form-group">
-                    <label for="input">Input (Domain, IP, CIDR):</label>
-                    <input type="text" id="input" name="input" placeholder="example.com or 192.168.1.0/24" required>
-                </div>
-
-                <button type="submit">Run</button>
-            </form>
-
-            <h2>Output:</h2>
-            <div id="output" class="output-box">
-                <!-- Tool output will be displayed here -->
             </div>
         </div>
     </div>
