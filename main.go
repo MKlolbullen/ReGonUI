@@ -4,15 +4,30 @@ import (
     "bytes"
     "encoding/xml"
     "fmt"
-    "net"
+    "io/ioutil"
     "net/http"
+    "os"
     "os/exec"
+    "path/filepath"
+    "strings"
+    "sync"
 
     "github.com/gin-gonic/gin"
 )
 
+type ToolRequest struct {
+    ProjectName string `json:"projectName"`
+    Tool        string `json:"tool"`
+    InputType   string `json:"inputType"`
+    Input       string `json:"input"`
+}
+
+var projectMutex sync.Mutex
+
+// Structs for parsing Nmap XML output
 type NmapRun struct {
-    Hosts []Host `xml:"host"`
+    XMLName xml.Name `xml:"nmaprun"`
+    Hosts   []Host   `xml:"host"`
 }
 
 type Host struct {
@@ -30,9 +45,10 @@ type Ports struct {
 }
 
 type Port struct {
-    PortID  string  `xml:"portid,attr"`
-    State   State   `xml:"state"`
-    Service Service `xml:"service"`
+    Protocol string  `xml:"protocol,attr"`
+    PortID   string  `xml:"portid,attr"`
+    State    State   `xml:"state"`
+    Service  Service `xml:"service"`
 }
 
 type State struct {
@@ -60,6 +76,13 @@ func main() {
         if projectName == "" {
             c.HTML(http.StatusOK, "project.html", nil)
         } else {
+            projectDir := filepath.Join("projects", projectName)
+            if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+                c.HTML(http.StatusOK, "project.html", gin.H{
+                    "error": "Project does not exist. Please create a new project.",
+                })
+                return
+            }
             c.HTML(http.StatusOK, "index.html", gin.H{
                 "projectName": projectName,
             })
@@ -76,34 +99,6 @@ func main() {
 
     // Start server
     router.Run(":8080")
-}
-
-func runNmapHandler(c *gin.Context) {
-    target := c.PostForm("target")
-    ifaceIP := c.PostForm("ifaceIP")
-
-    // Run nmap scan
-    cmd := exec.Command("nmap", "-sV", "-oX", "-", target)
-    var out bytes.Buffer
-    cmd.Stdout = &out
-    err := cmd.Run()
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run nmap"})
-        return
-    }
-
-    var nmapRun NmapRun
-    err = xml.Unmarshal(out.Bytes(), &nmapRun)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse nmap output"})
-        return
-    }
-
-    // Return nmap results as JSON
-    c.JSON(http.StatusOK, gin.H{
-        "ifaceIP": ifaceIP,
-        "hosts":   nmapRun.Hosts,
-    })
 }
 
 func startProjectHandler(c *gin.Context) {
@@ -158,9 +153,9 @@ func getOutputHandler(c *gin.Context) {
     projectDir := filepath.Join("projects", projectName)
     sanitizedInput := sanitizeFileName(input)
     filename := fmt.Sprintf("%s_%s_%s.txt", tool, inputType, sanitizedInput)
-    filepath := filepath.Join(projectDir, filename)
+    filePath := filepath.Join(projectDir, filename)
 
-    data, err := ioutil.ReadFile(filepath)
+    data, err := ioutil.ReadFile(filePath)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read output file"})
         return
@@ -244,12 +239,12 @@ func runTool(tool, inputType, input string) string {
 func saveOutput(projectDir, inputType, tool, input, output string) {
     input = sanitizeFileName(input)
     filename := fmt.Sprintf("%s_%s_%s.txt", tool, inputType, input)
-    filepath := filepath.Join(projectDir, filename)
+    filePath := filepath.Join(projectDir, filename)
 
     projectMutex.Lock()
     defer projectMutex.Unlock()
 
-    f, err := os.Create(filepath)
+    f, err := os.Create(filePath)
     if err != nil {
         fmt.Println("Error creating output file:", err)
         return
@@ -261,4 +256,70 @@ func saveOutput(projectDir, inputType, tool, input, output string) {
 
 func sanitizeFileName(name string) string {
     return strings.ReplaceAll(name, "/", "_")
+}
+
+func runNmapHandler(c *gin.Context) {
+    target := c.PostForm("target")
+    ifaceIP := c.PostForm("ifaceIP")
+
+    if target == "" || ifaceIP == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Target and Interface IP are required"})
+        return
+    }
+
+    // Run nmap scan
+    cmd := exec.Command("nmap", "-sV", "-oX", "-", target)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    err := cmd.Run()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run nmap"})
+        return
+    }
+
+    var nmapRun NmapRun
+    err = xml.Unmarshal(out.Bytes(), &nmapRun)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse nmap output"})
+        return
+    }
+
+    // Prepare hosts data
+    hostsData := []map[string]interface{}{}
+    for _, host := range nmapRun.Hosts {
+        ip := ""
+        for _, addr := range host.Addresses {
+            if addr.Type == "ipv4" {
+                ip = addr.Addr
+                break
+            }
+        }
+        if ip == "" {
+            continue
+        }
+
+        ports := []map[string]string{}
+        for _, port := range host.Ports.Ports {
+            if port.State.State == "open" {
+                ports = append(ports, map[string]string{
+                    "port":     port.PortID,
+                    "service":  port.Service.Name,
+                    "product":  port.Service.Product,
+                    "version":  port.Service.Version,
+                    "protocol": port.Protocol,
+                })
+            }
+        }
+
+        hostsData = append(hostsData, map[string]interface{}{
+            "ip":    ip,
+            "ports": ports,
+        })
+    }
+
+    // Return nmap results as JSON
+    c.JSON(http.StatusOK, gin.H{
+        "ifaceIP": ifaceIP,
+        "hosts":   hostsData,
+    })
 }
